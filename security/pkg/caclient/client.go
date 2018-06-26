@@ -24,7 +24,7 @@ import (
 	"istio.io/istio/security/pkg/nodeagent/secrets"
 	pkiutil "istio.io/istio/security/pkg/pki/util"
 	"istio.io/istio/security/pkg/platform"
-	pb "istio.io/istio/security/proto"
+	pb "istio.io/istio/security/proto/istioca"
 )
 
 // CAClient is a client to provision key and certificate from the upstream CA via CSR protocol.
@@ -50,31 +50,30 @@ func NewCAClient(pltfmc platform.Client, protocolClient protocol.CAProtocol, max
 
 // Retrieve sends the CSR to Istio CA with automatic retries. When successful, it returns the generated key
 // and cert, otherwise, it returns error. This is a blocking function.
-func (c *CAClient) Retrieve(options *pkiutil.CertOptions) (newCert []byte, certChain []byte, privateKey []byte, err error) {
+func (c *CAClient) Retrieve(options *pkiutil.CertOptions) (certChain []string, privateKey []byte, err error) {
 	retries := 0
 	retrialInterval := c.initialRetrialInterval
 	for {
 		privateKey, req, reqErr := c.createCSRRequest(options)
 		if reqErr != nil {
-			return nil, nil, nil, reqErr
+			return nil, nil, reqErr
 		}
 		log.Infof("Sending CSR (retrial #%d) ...", retries)
 
 		resp, err := c.caProtocol.SendCSR(req)
-		if err == nil && resp != nil && resp.IsApproved {
-			return resp.SignedCert, resp.CertChain, privateKey, nil
+		//if err == nil && resp != nil && resp.IsApproved {
+		if err == nil && resp != nil {
+			return resp.CertChain, privateKey, nil
 		}
 
 		if retries >= c.maxRetries {
-			return nil, nil, nil, fmt.Errorf(
+			return nil, nil, fmt.Errorf(
 				"CA client cannot get the CSR approved from Istio CA after max number of retries (%d)", c.maxRetries)
 		}
 		if err != nil {
 			log.Errorf("CSR signing failed: %v. Will retry in %v", err, retrialInterval)
 		} else if resp == nil {
 			log.Errorf("CSR signing failed: response empty. Will retry in %v", retrialInterval)
-		} else if !resp.IsApproved {
-			log.Errorf("CSR signing failed: request not approved. Will retry in %v", retrialInterval)
 		} else {
 			log.Errorf("Certificate parsing error. Will retry in %v", retrialInterval)
 		}
@@ -86,23 +85,19 @@ func (c *CAClient) Retrieve(options *pkiutil.CertOptions) (newCert []byte, certC
 	}
 }
 
-func (c *CAClient) createCSRRequest(opts *pkiutil.CertOptions) ([]byte, *pb.CsrRequest, error) {
+func (c *CAClient) createCSRRequest(opts *pkiutil.CertOptions) ([]byte, *pb.IstioCertificateRequest, error) {
 	csr, privKey, err := pkiutil.GenCSR(*opts)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	cred, err := c.platformClient.GetAgentCredential()
-	if err != nil {
-		return nil, nil, fmt.Errorf("request creation fails on getting platform credential (%v)", err)
-	}
+	//cred, err := c.platformClient.GetAgentCredential()
+	//if err != nil {
+	//	return nil, nil, fmt.Errorf("request creation fails on getting platform credential (%v)", err)
+	//}
 
-	return privKey, &pb.CsrRequest{
-		CsrPem:              csr,
-		NodeAgentCredential: cred,
-		CredentialType:      c.platformClient.GetCredentialType(),
-		// TODO(inclfy): verify current value matches default value.
-		RequestedTtlMinutes: int32(opts.TTL.Minutes()),
+	return privKey, &pb.IstioCertificateRequest{
+		Csr: string(csr),
 	}, nil
 }
 

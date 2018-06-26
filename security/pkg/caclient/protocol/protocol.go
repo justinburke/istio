@@ -23,19 +23,20 @@ import (
 	"google.golang.org/grpc"
 	//"istio.io/istio/pkg/log"
 	"istio.io/istio/security/pkg/platform"
-	pb "istio.io/istio/security/proto"
+	pb_old "istio.io/istio/security/proto"
+	pb "istio.io/istio/security/proto/istioca"
 )
 
 // CAProtocol is the interface for talking to CA.
 type CAProtocol interface {
 	// SendCSR send CSR request to the CA server.
-	SendCSR(*pb.CsrRequest) (*pb.CsrResponse, error)
+	SendCSR(*pb.IstioCertificateRequest) (*pb.IstioCertificateResponse, error)
 }
 
 // CAGrpcClient is for implementing the GRPC client to talk to CA.
 type CAGrpcClient interface {
 	// Send CSR to the CA and gets the response or error.
-	SendCSR(*pb.CsrRequest, platform.Client, string) (*pb.CsrResponse, error)
+	SendCSR(*pb.IstioCertificateRequest, platform.Client, string) (*pb.IstioCertificateResponse, error)
 }
 
 // GrpcConnection implements CAProtocol talking to CA via gRPC.
@@ -60,9 +61,9 @@ func NewGrpcConnection(caAddr string, dialOptions []grpc.DialOption) (*GrpcConne
 }
 
 // SendCSR sends a resquest to CA server and returns the response.
-func (c *GrpcConnection) SendCSR(req *pb.CsrRequest) (*pb.CsrResponse, error) {
-	client := pb.NewIstioCAServiceClient(c.connection)
-	return client.HandleCSR(context.Background(), req)
+func (c *GrpcConnection) SendCSR(req *pb.IstioCertificateRequest) (*pb.IstioCertificateResponse, error) {
+	client := pb.NewIstioCertificateServiceClient(c.connection)
+	return client.CreateCertificate(context.Background(), req)
 }
 
 // Close closes the gRPC connection.
@@ -73,12 +74,12 @@ func (c *GrpcConnection) Close() error {
 // FakeProtocol is a fake for testing, implements CAProtocol interface.
 type FakeProtocol struct {
 	counter int
-	resp    *pb.CsrResponse
+	resp    *pb_old.CsrResponse
 	errMsg  string
 }
 
 // NewFakeProtocol returns a FakeProtocol with configured response and expected error.
-func NewFakeProtocol(response *pb.CsrResponse, err string) *FakeProtocol {
+func NewFakeProtocol(response *pb_old.CsrResponse, err string) *FakeProtocol {
 	return &FakeProtocol{
 		resp:   response,
 		errMsg: err,
@@ -86,7 +87,7 @@ func NewFakeProtocol(response *pb.CsrResponse, err string) *FakeProtocol {
 }
 
 // SendCSR returns the result based on the predetermined config.
-func (f *FakeProtocol) SendCSR(req *pb.CsrRequest) (*pb.CsrResponse, error) {
+func (f *FakeProtocol) SendCSR(req *pb_old.CsrRequest) (*pb_old.CsrResponse, error) {
 	f.counter++
 	if f.counter > 8 {
 		return nil, fmt.Errorf("terminating the test with errors")
@@ -96,7 +97,7 @@ func (f *FakeProtocol) SendCSR(req *pb.CsrRequest) (*pb.CsrResponse, error) {
 		return nil, fmt.Errorf(f.errMsg)
 	}
 	if f.resp == nil {
-		return &pb.CsrResponse{}, nil
+		return &pb_old.CsrResponse{}, nil
 	}
 	return f.resp, nil
 }

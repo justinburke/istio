@@ -32,6 +32,7 @@ const (
 	httpAuthHeader    = "authorization"
 )
 
+// jwtAccess implements grpc.PerRPCCredentials interface
 type jwtAccess struct {
 	token string
 }

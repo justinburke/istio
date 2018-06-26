@@ -15,26 +15,64 @@
 package main
 
 import (
+	"flag"
 	"log"
+	"time"
 
-	"github.com/spf13/cobra"
+	"istio.io/istio/security/pkg/caclient"
+	"istio.io/istio/security/pkg/caclient/protocol"
+	"istio.io/istio/security/pkg/pki/util"
+	"istio.io/istio/security/pkg/platform"
 )
 
 var (
-	// RootCmd defines the command for node agent.
-	RootCmd = &cobra.Command{
-		Use:   "nodeagent",
-		Short: "Node agent",
-	}
+	caAddr    = flag.String("caAddr", "", "CA API endpoint. Eg.: api.example.com:443")
+	rootCerts = flag.String("rootCerts", "", "Root certificate trust store file")
+	jsonFile  = flag.String("jsonFile", "", "Service account JSON credentials file")
 )
 
-// Placeholder.
 func startManagement() {
+	log.Printf("Starting Node Agent")
+
+	platformClient, err := platform.NewClient("saJWT", *rootCerts, *jsonFile, "unused certChainFile", *caAddr)
+	if err != nil {
+		log.Fatalf("Error creating platform client: %v", err)
+	}
+
+	dialOptions, err := platformClient.GetDialOptions()
+	if err != nil {
+		log.Fatalf("Error creating gRPC dial options: %v", err)
+	}
+
+	caProtocol, err := protocol.NewGrpcConnection(*caAddr, dialOptions)
+	if err != nil {
+		log.Fatalf("Error configuring gRPC connection: %v", err)
+	}
+
+	maxRetries := 1
+	interval := time.Hour
+	client, err := caclient.NewCAClient(platformClient, caProtocol, maxRetries, interval)
+	if err != nil {
+		log.Fatalf("Error creating CA client: %v", err)
+	}
+
+	log.Printf("Retrieving certificate using client with type %v", client)
+	certChain, privateKey, err := client.Retrieve(&util.CertOptions{
+		Host:       "spiffe://accounts.google.com/1234123412341234",
+		IsCA:       false,
+		RSAKeySize: 2048,
+	})
+
+	if err != nil {
+		log.Fatalf("Error retrieving certificate: %v", err)
+	} else {
+
+		log.Printf("certChain = %s", certChain)
+		log.Printf("privateKey = %s", privateKey)
+	}
 }
 
 func main() {
-	if err := RootCmd.Execute(); err != nil {
-		log.Fatal(err)
-	}
+	flag.Parse()
 	startManagement()
 }
