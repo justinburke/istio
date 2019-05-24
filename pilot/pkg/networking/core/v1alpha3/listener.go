@@ -1535,9 +1535,24 @@ func buildListener(opts buildListenerOpts) *xdsapi.Listener {
 		if !needMatch && reflect.DeepEqual(*match, listener.FilterChainMatch{}) {
 			match = nil
 		}
+		// Statically add ALTS transport socket to each filter chain.
+		transportSocket := &core.TransportSocket{
+			Name: "envoy.transport_sockets.alts",
+			ConfigType: &core.TransportSocket_Config{
+				Config: &google_protobuf.Struct{
+					Fields: map[string]*(google_protobuf.Value){
+						"handshaker_service": &google_protobuf.Value{
+							Kind: &google_protobuf.Value_StringValue{
+								StringValue: "169.254.169.254:8080"},
+						},
+					},
+				},
+			},
+		}
 		filterChains = append(filterChains, listener.FilterChain{
 			FilterChainMatch: match,
 			TlsContext:       chain.tlsContext,
+			TransportSocket:  transportSocket,
 		})
 	}
 

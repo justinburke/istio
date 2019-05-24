@@ -179,6 +179,7 @@ func testInboundListenerConfig(t *testing.T, services ...*model.Service) {
 		t.Fatal("expected HTTP listener, found TCP")
 	}
 	verifyInboundHTTPListenerServerName(t, listeners[0])
+	verifyEachHTTPListenerALTSConfig(t, listeners)
 	if isHTTPListener(listeners[0]) {
 		verifyInboundHTTPListenerCertDetails(t, listeners[0])
 	}
@@ -282,6 +283,7 @@ func testOutboundListenerConfigWithSidecar(t *testing.T, services ...*model.Serv
 	if len(listeners) != 2 {
 		t.Fatalf("expected %d listeners, found %d", 2, len(listeners))
 	}
+	verifyEachHTTPListenerALTSConfig(t, listeners)
 
 	if isHTTPListener(listeners[0]) {
 		t.Fatal("expected TCP listener on port 8080, found HTTP")
@@ -396,6 +398,31 @@ func verifyInboundHTTPListenerServerName(t *testing.T, l *xdsapi.Listener) {
 	serverName := config.Fields["server_name"].GetStringValue()
 	if serverName != expectedServerName {
 		t.Fatalf("expected listener to contain server_name %s, found %s", expectedServerName, serverName)
+	}
+}
+
+func verifyHTTPListenerALTSConfig(t *testing.T, l *xdsapi.Listener) {
+	t.Helper()
+	if len(l.FilterChains) == 0 {
+		t.Fatalf("expected non-zero filter chains, found 0")
+	}
+	for _, fc := range l.FilterChains {
+		ts := fc.GetTransportSocket()
+		if ts == nil {
+			t.Fatalf("expected TransportSocket, found nil")
+		}
+		if expectedTSName := "envoy.transport_sockets.alts"; ts.Name != expectedTSName {
+			t.Fatalf("expected transport socket name %s, found %s", expectedTSName, ts.Name)
+		}
+	}
+}
+
+func verifyEachHTTPListenerALTSConfig(t *testing.T, l []*xdsapi.Listener) {
+	if len(l) == 0 {
+		t.Fatalf("expected non-zero listeners, found 0")
+	}
+	for i, _ := range l {
+		verifyHTTPListenerALTSConfig(t, l[i])
 	}
 }
 
