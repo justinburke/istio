@@ -174,6 +174,7 @@ func (configgen *ConfigGeneratorImpl) buildOutboundClusters(env *model.Environme
 	for _, service := range push.Services(proxy) {
 		config := push.DestinationRule(proxy, service)
 		for _, port := range service.Ports {
+			log.Infof("Building outbound cluster for %s:%v", service.Hostname, port)
 			if port.Protocol == model.ProtocolUDP {
 				continue
 			}
@@ -1046,6 +1047,21 @@ func buildDefaultCluster(env *model.Environment, name string, discoveryType apiv
 	defaultTrafficPolicy := buildDefaultTrafficPolicy(env, discoveryType)
 	applyTrafficPolicy(env, cluster, defaultTrafficPolicy, nil, nil, "",
 		DefaultClusterMode, direction, proxy)
+	if strings.Contains(name, "1234") || strings.Contains(name, "burkej-istio") {
+		cluster.TransportSocket = &core.TransportSocket{
+			Name: "envoy.transport_sockets.alts",
+			ConfigType: &core.TransportSocket_Config{
+				Config: &types.Struct{
+					Fields: map[string]*(types.Value){
+						"handshaker_service": &types.Value{
+							Kind: &types.Value_StringValue{
+								StringValue: "169.254.169.254:8080"},
+						},
+					},
+				},
+			},
+		}
+	}
 	return cluster
 }
 

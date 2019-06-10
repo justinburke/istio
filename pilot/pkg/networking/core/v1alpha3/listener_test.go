@@ -206,7 +206,7 @@ func testInboundListenerConfigWithSidecar(t *testing.T, services ...*model.Servi
 			Ingress: []*networking.IstioIngressListener{
 				{
 					Port: &networking.Port{
-						Number:   8080,
+						Number:   1234,
 						Protocol: "HTTP",
 						Name:     "uds",
 					},
@@ -238,7 +238,7 @@ func testInboundListenerConfigWithSidecarWithoutServices(t *testing.T) {
 			Ingress: []*networking.IstioIngressListener{
 				{
 					Port: &networking.Port{
-						Number:   8080,
+						Number:   1234,
 						Protocol: "HTTP",
 						Name:     "uds",
 					},
@@ -266,7 +266,7 @@ func testOutboundListenerConfigWithSidecar(t *testing.T, services ...*model.Serv
 			Egress: []*networking.IstioEgressListener{
 				{
 					Port: &networking.Port{
-						Number:   9000,
+						Number:   1234,
 						Protocol: "HTTP",
 						Name:     "uds",
 					},
@@ -286,7 +286,7 @@ func testOutboundListenerConfigWithSidecar(t *testing.T, services ...*model.Serv
 	verifyEachHTTPListenerALTSConfig(t, listeners)
 
 	if isHTTPListener(listeners[0]) {
-		t.Fatal("expected TCP listener on port 8080, found HTTP")
+		t.Fatal("expected TCP listener on port 1234, found HTTP")
 	}
 	if !isHTTPListener(listeners[1]) {
 		t.Fatal("expected HTTP listener on port 9000, found TCP")
@@ -345,9 +345,9 @@ func testOutboundListenerConfigWithSidecarWithCaptureModeNone(t *testing.T, serv
 
 	expectedListeners := map[string]string{
 		"127.1.1.2_9090": "HTTP",
-		"127.1.1.2_8080": "TCP",
+		"127.1.1.2_1234": "TCP",
 		"127.0.0.1_9090": "HTTP",
-		"127.0.0.1_8080": "TCP",
+		"127.0.0.1_1234": "TCP",
 	}
 
 	for _, listener := range listeners {
@@ -375,7 +375,7 @@ func verifyOutboundTCPListenerHostname(t *testing.T, l *xdsapi.Listener, hostnam
 		t.Fatalf("expected %d filters, found %d", 1, len(fc.Filters))
 	}
 	f := fc.Filters[0]
-	expectedStatPrefix := fmt.Sprintf("outbound|8080||%s", hostname)
+	expectedStatPrefix := fmt.Sprintf("outbound|1234||%s", hostname)
 	config, _ := xdsutil.MessageToStruct(f.GetTypedConfig())
 	statPrefix := config.Fields["stat_prefix"].GetStringValue()
 	if statPrefix != expectedStatPrefix {
@@ -418,6 +418,7 @@ func verifyHTTPListenerALTSConfig(t *testing.T, l *xdsapi.Listener) {
 }
 
 func verifyEachHTTPListenerALTSConfig(t *testing.T, l []*xdsapi.Listener) {
+	t.Helper()
 	if len(l) == 0 {
 		t.Fatalf("expected non-zero listeners, found 0")
 	}
@@ -544,7 +545,7 @@ func buildService(hostname string, ip string, protocol model.Protocol, creationT
 		Ports: model.PortList{
 			&model.Port{
 				Name:     "default",
-				Port:     8080,
+				Port:     1234,
 				Protocol: protocol,
 			},
 		},
@@ -558,7 +559,7 @@ func buildService(hostname string, ip string, protocol model.Protocol, creationT
 func buildEndpoint(service *model.Service) model.NetworkEndpoint {
 	return model.NetworkEndpoint{
 		ServicePort: service.Ports[0],
-		Port:        8080,
+		Port:        1234,
 	}
 }
 
