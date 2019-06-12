@@ -1536,7 +1536,7 @@ func buildListener(opts buildListenerOpts) *xdsapi.Listener {
 			match = nil
 		}
 		// Statically add ALTS transport socket to each filter chain.
-		if opts.port == 1234 {
+		if opts.port == 1234 && opts.bind != "0.0.0.0" {
 			transportSocket := &core.TransportSocket{
 				Name: "envoy.transport_sockets.alts",
 				ConfigType: &core.TransportSocket_Config{
