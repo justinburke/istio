@@ -1049,12 +1049,8 @@ func buildDefaultCluster(env *model.Environment, name string, discoveryType apiv
 	applyTrafficPolicy(env, cluster, defaultTrafficPolicy, nil, nil, "",
 		DefaultClusterMode, direction, proxy)
 	if strings.Contains(name, "1234") || strings.Contains(name, "burkej-istio") {
-		//if proxy.ID == "burkej-istio2.default" && name == "outbound|1234||burkej-istio2.vm.svc.cluster.local" {
-		//if proxy.ID == "burkej-istio2.default" && name == "inbound|8000|http|burkej-istio2.default.svc.cluster.local" {
 		// Don't add ALTS configuration to "inbound" clusters
 		if strings.Contains(name, "inbound") {
-			//if proxy.ID == "burkej-istio2.default" && strings.Contains(name, "burkej-istio2") {
-			//if proxy.ID == "burkej-istio2.default" {
 			log.Infof("CDS-debug: buildDefaultCluster: skipping ALTS config for proxy ID=%s name=%s", proxy.ID, name)
 		} else {
 			log.Infof("CDS-debug: buildDefaultCluster: proxy ID=%s  name=%s", proxy.ID, name)
